@@ -12,7 +12,7 @@
                  [markdown-clj "0.9.94"]
                  [metosin/ring-http-response "0.8.1"]
                  [mount "0.1.11"]
-                 [org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojure "1.9.0-alpha14"]
                  [org.clojure/clojurescript "1.9.456" :scope "provided"]
                  [org.clojure/tools.cli "0.3.5"]
                  [org.clojure/tools.logging "0.3.1"]
