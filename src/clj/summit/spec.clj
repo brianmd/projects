@@ -17,7 +17,7 @@
 (s/def :spec/int #(integer? %))
 (s/def :spec/non-negative #(<= 0 %))
 (s/def :spec/whole (s/and :spec/int :spec/non-negative))
-(s/def :spec/id :specs/int)
+(s/def :spec/id :spec/int)
 
 (s/def :spec/customer-id :spec/whole)
 
