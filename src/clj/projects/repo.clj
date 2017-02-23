@@ -8,5 +8,6 @@
   [url]
   (nr/connect url))
 
-(def repo (connect (or (System/getenv "NEO4J_URL") "http://localhost:7474/db/data/")))
+(def repo
+  (connect (or (System/getenv "NEO4J_URL") "http://localhost:7474/db/data/")))
 
