@@ -1,5 +1,5 @@
 (ns projects.json-api
-  (:require [projects.crud :as crud]
+  (:require ; [projects.crud :as crud]
             [projects.neo4j :as n]
 
             [clojure.string :as string]))
@@ -33,6 +33,11 @@
   [s]
   (str s "s"))
 
+(defn class-name->str
+  [n]
+  ;; (-> n :_meta :class name lower-first-char remove-proxy-suffix))
+  (-> n name lower-first-char remove-proxy-suffix))
+
 (defn relate
   [[k ids]]
   (let [name (class-name->str k)
@@ -45,11 +50,6 @@
         (map #(relate-one name %) ids))
       }}))
 
-(defn class-name->str
-  [n]
-  ;; (-> n :_meta :class name lower-first-char remove-proxy-suffix))
-  (-> n name lower-first-char remove-proxy-suffix))
-
 (defn extract-relationships-by-type
   [relationships]
   (->>
@@ -60,15 +60,35 @@
    (apply merge)
    ))
 
+(defn extract-relationships-by-type
+  [n [label relations] conversions]
+  (let [from-klass (-> n :_meta :class)
+        klass (-> relations first :_meta :class)
+        type (class-name->str klass)
+        one? (= 1 (count relations))
+        lbl (if-let [l (get conversions [from-klass label klass])] l label)
+        ]
+    {lbl
+     {:data
+            (if one?
+              {:type type :id (:id (first relations))}
+              (map (fn [r] {:type type :id (:id r)}) relations))}})
+  )
+
 (defn node->json-api
-  [n]
-  {:type (-> n :_meta :class class-name->str)
-   :id (-> n :_meta :id)
-   :attributes (dissoc n :id :_meta)
-   :relationships (extract-relationships-by-type (n/relationships n))
-   })
+  ([n] (node->json-api n {}))
+  ([n conversions]
+   (let [r (apply merge
+                  (map #(extract-relationships-by-type n % conversions) (n/extract-relationships n)))]
+     (cond->
+         {:type (-> n :_meta :class class-name->str)
+          ;; :id (-> n :_meta :id)
+          :id (-> n :id)
+          :attributes (dissoc n :id :_meta)
+          }
+       r (assoc :relationships r)))))
 
 (defn ->json-api
-  [n included]
-  {:data (node->json-api n) :included (map node->json-api included)})
+  [n included conversions]
+  {:data (node->json-api n conversions) :included (map #(node->json-api % conversions) included )})
 

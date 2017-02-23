@@ -75,14 +75,15 @@
   [user-repo project-id]
   (map (comp first vals)
        ;; (n/process-plain-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return {id: id(n), name: n.name}" {"id" project-id})))
-       (n/process-plain-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return {id: n.id, name: n.name}" {"id" project-id})))
+       ;; (n/process-plain-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return {id: n.id, name: n.name}" {"id" project-id})))
+       (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return n" {"id" project-id})))
 
 (defn release-create
   "create new release against project"
-  [user-repo sap-project-id m]
-  (let [query "merge (project:ProjectProxy:SAPProxy {id: {projectId}}) create (project)-[l:hasRelease]->(n:Release {data}) return n"
+  [user-repo sap-project-id requestor-id m]
+  (let [query "merge (project:ProjectProxy:SAPProxy {id: {projectId}}) MERGE (requestor:Customer {id: {requestorId}}) create (project)-[l:release]->(n:Release {data})-[r:requestor]->(requestor) return n"
         id (make-id :Release)
-        data {:projectId sap-project-id :data (assoc m :id id)}]
+        data {:projectId sap-project-id :requestorId requestor-id :data (assoc m :id id)}]
     (n/process-query-n user-repo query data)))
 
 (defn project
@@ -98,7 +99,7 @@
 (defn release-line-item
   [user-repo id]
   (n/node-plus-relationships user-repo id "ReleaseLineItem"))
- 
+
 
 
   ;; (let [release-project (n/process-query user-repo "match (r:Release {id: {id}}) optional match (p)-[]->(r) return p,r" {"id" release-id})]
@@ -137,7 +138,7 @@
   ;; map has qty
   [user-repo release-id project-line-item-id m]
   ;; (let [query "match (r) where ID(r)={id} create unique (r)-[l:hasReleaseLineitem]->(rli:ReleaseLineItem {data})-[l2:hasProjectLineItem]->(:ProjectLineItemProxy:SAPProxy {pliData}) return rli"
-  (let [query "match (r:Release {id: {id}}) create unique (r)-[l:hasReleaseLineitem]->(rli:ReleaseLineItem {data})-[l2:hasProjectLineItem]->(:ProjectLineItemProxy:SAPProxy {pliData}) return rli"
+  (let [query "match (r:Release {id: {id}}) create unique (r)-[l:lineItems]->(rli:ReleaseLineItem {data})-[l2:projectLineItem]->(:ProjectLineItemProxy:SAPProxy {pliData}) return rli"
         data {"id" release-id "data" (assoc m :id (make-id "ReleaseLineItem")) "pliData" {:type "projectlineitem" :id project-line-item-id}}]
     (n/process-query user-repo query data)))
 ;; (def y (release-line-item-create user-repo xid "1234-20" {:qty 4}))
@@ -264,9 +265,19 @@
 ;;   )
 
 
+(def labelConversions
+  ;;  label    to-node
+  {[:Release :release :ProjectProxy]      :project
+   [:ReleaseLineItem :lineItems :Release] :release
+   })
+;; (labelConversions [:lineItems :Release])
+;; (get labelConversions [:lineItems :Release])
+
 (defn release->json-api
   [repo n]
-  (let [rli-ids (->> n :_meta :relationships (filter #(= :ReleaseLineItem (-> % :_meta :class))) (map :id))
-        rlis (map #(release-line-item repo %) rli-ids)]
-    (j/->json-api n rlis)
-    ))
+  (if (and n (map? n))
+    (let [rli-ids (->> n :_meta :relationships :lineItems (map :id))
+          rlis (map #(n/node-plus-relationships repo %) rli-ids)]
+      (j/->json-api n rlis labelConversions)
+      )
+    (throw (ex-info "Not found in release->json-api" {:type :not-found}))))

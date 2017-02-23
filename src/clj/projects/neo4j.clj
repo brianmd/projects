@@ -17,7 +17,15 @@
             ;; [projects.keys :as k]
             ))
 
-(defn relationships [n]
+(defn merge-lists [& maps]
+  (reduce (fn [m1 m2]
+            (reduce (fn [m [k v]]
+                      (update-in m [k] (fnil conj []) v))
+                    m1, m2))
+          {}
+          maps))
+
+(defn extract-relationships [n]
   (-> n :_meta :relationships))
 
 (defn default-repo
@@ -65,6 +73,7 @@
   )
 
 (defn process-plain-query
+  "process the query but don't post-process the response"
   ([query] (process-plain-query nil query))
   ([user-repo query] (process-plain-query user-repo query {}))
   ([repo query data]
@@ -127,17 +136,38 @@
      (process-query-n user-repo query {"key" key}))
    ))
 
+(defn relate-one
+  [nr]
+  (let [relate-name (-> nr :r :_meta :labels first)
+        ]
+    {(keyword relate-name) (:n nr)}))
+
 (defn find-relationships
-  "returns the map entry for key, or nil if key is not present (or does not match label)"
+  "returns the map entry for id, or nil if id is not present (or does not match label)"
   ([user-repo id]
-   (map :n
-        (process-query user-repo "match (n1 {id: {id}})-[r]-(n) return n" {"id" id})))
+   (let [rels (process-query user-repo "match (n1 {id: {id}})-[r]-(n) return n,r" {"id" id})]
+     (apply merge-lists
+      (map relate-one rels))))
   ([user-repo id label]
-   ;; (let [query (str "match (n1:" label ")-[r]-(n) where ID(n1)={id} return n")]
-   (let [query (str "match (n1:" label " {id: {id}})-[r]-(n) return n")]
-     (map :n
-          (process-query user-repo query {"id" id})))
-   ))
+   (let [rels (process-query user-repo (str "match (n1:" label " {id: {id}})-[r]-(n) return n,r") {"id" id})]
+     (apply merge-lists
+            (map relate-one rels))))
+  )
+;; (find-relationships nil "Release-2615659335586")
+;; {"hasReleaseLineitem"
+;;  [{:qty 4, :id "ReleaseLineItem-2626487596465", :_meta {:id 19, :labels ["ReleaseLineItem"], :type :node, :class :ReleaseLineItem}}
+;;   {:qty 7, :id "ReleaseLineItem-2625492262429", :_meta {:id 17, :labels ["ReleaseLineItem"], :type :node, :class :ReleaseLineItem}}],
+
+;;  "hasRelease"
+;;  [{:id 3, :_meta {:id 14, :labels ["ProjectProxy" "SAPProxy"], :type :node, :class :ProjectProxy}}]
+;;  }
+
+
+;; ([user-repo id label]
+;;  ;; (let [query (str "match (n1:" label ")-[r]-(n) where ID(n1)={id} return n")]
+;;  (let [query (str "match (n1:" label " {id: {id}})-[r]-(n) return n")]
+;;    (map :n
+;;         (process-query user-repo query {"id" id}))))
 
 (defn find
   "returns the map entry for property id, or nil if id is not present (or does not match label)"
@@ -151,11 +181,15 @@
 (defn node-plus-relationships
   "returns the map entry for property id, or nil if id is not present (or does not match label)"
   ([user-repo id]
-   (assoc-in (find user-repo id) [:_meta :relationships]
-             (find-relationships user-repo id)))
+   (let [node (find user-repo id)]
+     (when node
+       (assoc-in node [:_meta :relationships]
+                 (find-relationships user-repo id)))))
   ([user-repo id label]
-   (assoc-in (find user-repo id label) [:_meta :relationships]
-             (find-relationships user-repo id label))))
+   (let [node (find user-repo id label)]
+     (when node
+       (assoc-in node [:_meta :relationships]
+                 (find-relationships user-repo id label))))))
 
 (defn find-source-id
   "returns the map entry for key, or nil if key is not present (or does not match label)"
