@@ -72,12 +72,36 @@
   (map relevant-info1 response)
   )
 
+(defn process-plain-query-nont
+  "process the query but don't post-process the response"
+  ([query] (process-plain-query nil query))
+  ([user-repo query] (process-plain-query user-repo query {}))
+  ([repo query data]
+   (let [data (if data (walk/stringify-keys data) {})
+         _ (prn query)
+         _ (prn data)
+         ]
+     (try
+       (cypher/query (->repo repo) query data)
+       (catch Throwable e
+         (let [s (str e)]
+           (cond
+             (re-find #"(?i)host url cannot be nil" s) (throw (ex-info "host url is nil" {:type :bad-host :error e :repo repo}))
+             (re-find #"(?i)already exists" s) (throw (ex-info "already exists" {:type :already-exists :error s}))
+             :else (throw (ex-info "unknown error" {:type :unhandled-error :error s}))
+             ;; :else (subs s 0 (min (count s) 600))
+             ))
+         )))))
+
 (defn process-plain-query
   "process the query but don't post-process the response"
   ([query] (process-plain-query nil query))
   ([user-repo query] (process-plain-query user-repo query {}))
   ([repo query data]
-   (let [data (if data (walk/stringify-keys data) {})]
+   (let [data (if data (walk/stringify-keys data) {})
+         _ (prn query)
+         _ (prn data)
+         ]
      (try
        (cypher/tquery (->repo repo) query data)
        (catch Throwable e
@@ -191,14 +215,14 @@
        (assoc-in node [:_meta :relationships]
                  (find-relationships user-repo id label))))))
 
-(defn find-source-id
-  "returns the map entry for key, or nil if key is not present (or does not match label)"
-  ([user-repo source-id]
-   (process-query-n user-repo "match (n {sourceId: {id}}) return n" {"id" source-id}))
-  ([user-repo source-id label]
-   (let [query (str "match (n:" label " {sourceId: {id}}) return n")]
-     (process-query-n user-repo query {"id" source-id}))
-   ))
+;; (defn find-source-id
+;;   "returns the map entry for key, or nil if key is not present (or does not match label)"
+;;   ([user-repo source-id]
+;;    (process-query-n user-repo "match (n {sourceId: {id}}) return n" {"id" source-id}))
+;;   ([user-repo source-id label]
+;;    (let [query (str "match (n:" label " {sourceId: {id}}) return n")]
+;;      (process-query-n user-repo query {"id" source-id}))
+;;    ))
 
 
 (defn create-node
@@ -210,15 +234,7 @@
   (let [query "match (n) where ID(n)={id} set n += {data} return n"
         data {"id" id}]
     (process-query user-repo query data)))
-(get-node-by-id (default-repo) 1 )
-
-(defn update-node-by-id
-  "update node with specified id"
-  [user-repo id m]
-  (let [query "match (n) where ID(n)={id} set n += {data} return n"
-        data {"id" id "data" m}]
-    (process-query user-repo query data)))
-;; (update-node projects.crud/user-repo 27 {"name" "LACC"})
+;; (get-node-by-id (default-repo) 1 )
 
 (defn update-node
   "update node with specified property id (property id, not node id)"
@@ -230,23 +246,16 @@
    (let [query (str "match (n:" label " {id: {id}}) set n += {data} return n")
          data {"id" id "data" m}]
      (process-query user-repo query data))))
-;; (update-node projects.crud/user-repo 27 {"name" "LACC"})
-
-(defn delete-node-by-id
-  [user-repo id]
-  (let [query "match (n) where ID(n)={id} detach delete n"
-        data {"id" id}]
-    (process-query user-repo query data)))
 
 (defn delete-node
-  ([user-repo id m]
-   (let [query "match (n {id: {id}}) detach delete n return n"
-         data {"id" id "data" m}]
-     (process-query user-repo query data)))
-  ([user-repo id m label]
-   (let [query (str "match (n:" label " {id: {id}}) detach delete n return n")
-         data {"id" id "data" m}]
-     (process-query user-repo query data))))
+  ([user-repo id]
+   (let [query "match (n {id: {id}}) detach delete n"
+         data {"id" id}]
+     (process-plain-query user-repo query data)))
+  ([user-repo id label]
+   (let [query (str "match (n:" label " {id: {id}}) detach delete n")
+         data {"id" id}]
+     (process-plain-query user-repo query data))))
 
 (defn delete-node-source-id
   "deletes node. throws error if node has relationships."
@@ -256,55 +265,4 @@
 (defn delete-all!
   [user-repo]
   (process-query user-repo "match (n) detach delete n"))
-
-
-;; (def user-repo projects.crud/user-repo)
-
-;; (delete-all! user-repo)
-;; (def x (process-query user-repo "create (p:Project {sapProjectId: 3}) return p"))
-
-;; (find-relationship user-repo 18)
-;; (find user-repo 18)
-;; (find user-repo 28 "Release")
-;; (find-source-id user-repo 3)
-;; (find-source-id user-repo 3 "Project")
-;; (find user-repo 28 "Release")
-
-;; (find-relationship user-repo 18)
-;; (find user-repo 28)
-
-
-;; (defn repo-from
-;;   [user-repo]
-;;   (:repo user-repo))
-
-;; (defn add-label
-;;   ([user-repo label] (fn [node] (add-label user-repo label node)))
-;;   ([user-repo label node]
-;;    (labels/add (repo-from user-repo) node label)))
-
-;; (defn create-node
-;;   ([user-repo label] (fn [m] (create-node user-repo label m)))
-;;   ([user-repo label m]
-;;    {:pre [(s/valid? :specs/user-repo user-repo)
-;;           (s/valid? :specs/str label)
-;;           (s/valid? :specs/map m)]}
-;;    (let [node (cypher/tquery (:repo user-repo) (str "CREATE (n:" label " {data}) RETURN n") { "data" m})]
-;;      (-> node first (get "n")))))
-;;    ;; (let [node (nn/create (repo-from user-repo) m)]
-;;    ;;   (if node
-;;    ;;     (do
-;;    ;;       (add-label user-repo label node)
-;;    ;;       node)
-;;    ;;     (throw node)))))
-
-;; (defn create-nodes
-;;   "optimization: use create batch"
-;;   [user-repo label v]
-;;   (doseq [m v]
-;;     (create-node user-repo label m)))
-
-;; (defn cypher-query
-;;   [user-repo query]
-;;   (cypher/tquery (repo-from user-repo) query))
 

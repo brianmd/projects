@@ -17,7 +17,48 @@
   [json-data]
   (-> (response/ok json-data)
       (response/header "Content-Type" "application/json; charset=utf-8")
-      (response/header "Access-Control-Allow-Origin" "*")))
+      ;; (response/header "Access-Control-Allow-Origin" "*")
+      ))
+
+(defn upsert-release
+  [request data]
+  (prn data)
+  (let [attrs (:attributes data)
+        project-id (-> data :relationships :release :data :id)
+        requestor-id (-> data :relationships :requestor :data :id)
+        id (:id data)
+        ]
+    (prn [id project-id requestor-id attrs])
+    (if id
+      (let [n (crud/release-update repo id attrs)]
+        (clojure.pprint/pprint n)
+        (ok-json {:id (:id n)})
+        )
+      (let [n (crud/release-create repo project-id requestor-id attrs)]
+        (clojure.pprint/pprint n)
+        (ok-json {:id (:id n)})
+        )
+      )))
+
+(defn upsert-release-line-item
+  [request data]
+  (prn data)
+  (let [attrs (:attributes data)
+        release-id (-> data :relationships :release :data :id)
+        project-line-item-id (-> data :relationships :project-line-item :data :id)
+        id (:id data)
+        ]
+    (prn [id release-id project-line-item-id attrs])
+    (if id
+      (let [n (crud/release-line-item-update repo id attrs)]
+        (clojure.pprint/pprint n)
+        (ok-json {:id (:id n)})
+        )
+      (let [n (crud/release-line-item-create repo release-id project-line-item-id attrs)]
+        (clojure.pprint/pprint n)
+        (ok-json {:id (:id n)})
+        )
+      )))
 
 (defn project-routes
   [version]
@@ -33,15 +74,39 @@
               json-data (#'crud/release->json-api repo node)
               ]
           (ok-json json-data)))
-   (POST "/releases" req
+   (POST "/releases" [data :as request]
          (println "\n\nin post releases\n")
-         (prn (str (:body req)))
-         (ok-json {:ok true})
+         (prn data)
+         (upsert-release request data)
          )
-   (PATCH "/releases/:id" [id]
+   (PATCH "/releases/:id" [id data :as request]
+          (println "\n\nin patch releases\n")
+          (prn data)
+          (upsert-release request data)
+          )
+   (DELETE "/releases/:id" [id :as request]
+           (println "\n\nin delete release\n")
+           (prn id)
+           ;; (let [id (:id data)]
+             (crud/release-delete id)
+             ;; )
+           )
+
+   (POST "/release-line-items" [data :as request]
+         (println "\n\nin post release-line-items\n")
+         (prn data)
+         (upsert-release-line-item request data)
          )
-   (POST "/releases/:id/release-line-items" []
-         )
-   (PATCH "/releases/:id/release-line-items/:id" [id]
+   (PATCH "/release-line-items/:id" [id data :as request]
+          (println "\n\nin patch release-line-items\n")
+          (prn data)
+          (upsert-release-line-item request data)
+          )
+   (DELETE "/release-line-items/:id" [id :as request]
+           (println "\n\nin delete release-line-items\n")
+           ;; (prn data)
+           ;; (let [id (:id data)]
+             (crud/release-line-item-delete id)
+             ;; )
          )
    ))
