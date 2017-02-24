@@ -24,9 +24,25 @@
             [projects.json-api :as j]
 
             [clojurewerkz.neocons.rest.relationships :as relations]
-            [clojurewerkz.neocons.rest.cypher :as cypher]))
+            [clojurewerkz.neocons.rest.cypher :as cypher]
+            [clojure.string :as str]))
 
 ;; helper functions
+
+(defn ->int [o]
+  (let [t (type o)]
+    (condp = true
+      (nil? o) 0
+      (= t Integer) o
+      (= t Long) o
+      (number? o) (-> o Math/round int)
+      (string? o)
+      (let [v (str/trim o)]
+        (if (empty? v)
+          0
+          (-> v Double/parseDouble Math/round int)))
+      true (type o)
+      )))
 
 (defn now-nano []
   (System/nanoTime))
@@ -98,17 +114,12 @@
   [user-repo sap-project-id requestor-id m]
   (let [query "merge (project:ProjectProxy:SAPProxy {id: {projectId}}) MERGE (requestor:Customer {id: {requestorId}}) create (project)-[l:release]->(n:Release {data})-[r:requestor]->(requestor) return n"
         id (make-id :Release)
-        data {:projectId sap-project-id :requestorId requestor-id :data (assoc m :id id)}]
+        data {:projectId (->int sap-project-id) :requestorId (->int requestor-id) :data (assoc m :id id)}]
     (n/process-query-n user-repo query data)))
 
 (defn release
   [user-repo id]
   (n/node-plus-relationships user-repo id "Release"))
-
-(defn release-line-item
-  [user-repo id]
-  (n/node-plus-relationships user-repo id "ReleaseLineItem"))
-
 
 (defn release-update
   [user-repo release-id m]
@@ -117,10 +128,10 @@
     (n/process-query-n user-repo query {:id release-id :data data}))
   )
 
-(defn release-update-state
-  [user-repo release-id state]
-  {:pre [(s/valid? ::user-repo user-repo)]}
-  )
+;; (defn release-update-state
+;;   [user-repo release-id state]
+;;   {:pre [(s/valid? ::user-repo user-repo)]}
+;;   )
 
 (defn release-delete
   [user-repo release-id]
@@ -134,6 +145,10 @@
         data {"id" release-id "data" (assoc m :id (make-id "ReleaseLineItem")) "pliData" {:type "projectlineitem" :id project-line-item-id}}]
     (n/process-query user-repo query data)))
 
+
+(defn release-line-item
+  [user-repo id]
+  (n/node-plus-relationships user-repo id "ReleaseLineItem"))
 
 (defn release-line-item-update
   [user-repo release-line-item-id m]

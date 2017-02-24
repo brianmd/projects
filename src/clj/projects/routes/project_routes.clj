@@ -24,7 +24,7 @@
   [request data]
   (prn data)
   (let [attrs (:attributes data)
-        project-id (-> data :relationships :release :data :id)
+        project-id (-> data :relationships :project :data :id)
         requestor-id (-> data :relationships :requestor :data :id)
         id (:id data)
         ]
@@ -32,11 +32,11 @@
     (if id
       (let [n (crud/release-update repo id attrs)]
         (clojure.pprint/pprint n)
-        (ok-json {:id (:id n)})
+        (ok-json {:data (j/node->json-api n)})
         )
       (let [n (crud/release-create repo project-id requestor-id attrs)]
         (clojure.pprint/pprint n)
-        (ok-json {:id (:id n)})
+        (ok-json {:data (j/node->json-api n)})
         )
       )))
 
@@ -52,19 +52,25 @@
     (if id
       (let [n (crud/release-line-item-update repo id attrs)]
         (clojure.pprint/pprint n)
-        (ok-json {:id (:id n)})
+        (ok-json {:data (j/node->json-api n)})
         )
       (let [n (crud/release-line-item-create repo release-id project-line-item-id attrs)]
         (clojure.pprint/pprint n)
-        (ok-json {:id (:id n)})
+        (ok-json {:data (j/node->json-api n)})
         )
       )))
 
+;; (crud/releases nil "3")
 (defn project-routes
   [version]
   (routes
    (GET "/ok" []
         (ok-json {:ok true}))
+   (GET "/releases" []
+        (let [id "3"
+              data (map j/node->json-api (crud/releases (make-repo nil) (read-string id)))]
+          (println "\n\nasdf \n")
+          (ok-json {:data data})))
    (GET "/projects/:id/releases" [id]
         (let [data (map j/node->json-api (crud/releases (make-repo nil) (read-string id)))]
           (ok-json data)))
