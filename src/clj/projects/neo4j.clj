@@ -72,26 +72,26 @@
   (map relevant-info1 response)
   )
 
-(defn process-plain-query-nont
-  "process the query but don't post-process the response"
-  ([query] (process-plain-query nil query))
-  ([user-repo query] (process-plain-query user-repo query {}))
-  ([repo query data]
-   (let [data (if data (walk/stringify-keys data) {})
-         _ (prn query)
-         _ (prn data)
-         ]
-     (try
-       (cypher/query (->repo repo) query data)
-       (catch Throwable e
-         (let [s (str e)]
-           (cond
-             (re-find #"(?i)host url cannot be nil" s) (throw (ex-info "host url is nil" {:type :bad-host :error e :repo repo}))
-             (re-find #"(?i)already exists" s) (throw (ex-info "already exists" {:type :already-exists :error s}))
-             :else (throw (ex-info "unknown error" {:type :unhandled-error :error s}))
-             ;; :else (subs s 0 (min (count s) 600))
-             ))
-         )))))
+;; (defn process-plain-query-nont
+;;   "process the query but don't post-process the response"
+;;   ([query] (process-plain-query nil query))
+;;   ([user-repo query] (process-plain-query user-repo query {}))
+;;   ([repo query data]
+;;    (let [data (if data (walk/stringify-keys data) {})
+;;          _ (prn query)
+;;          _ (prn data)
+;;          ]
+;;      (try
+;;        (cypher/query (->repo repo) query data)
+;;        (catch Throwable e
+;;          (let [s (str e)]
+;;            (cond
+;;              (re-find #"(?i)host url cannot be nil" s) (throw (ex-info "host url is nil" {:type :bad-host :error e :repo repo}))
+;;              (re-find #"(?i)already exists" s) (throw (ex-info "already exists" {:type :already-exists :error s}))
+;;              :else (throw (ex-info "unknown error" {:type :unhandled-error :error s}))
+;;              ;; :else (subs s 0 (min (count s) 600))
+;;              ))
+;;          )))))
 
 (defn process-plain-query
   "process the query but don't post-process the response"
@@ -120,6 +120,8 @@
   ([user-repo query] (process-query user-repo query {}))
   ([repo query data]
    (let [response (process-plain-query repo query data)]
+     (println "\n\nresponse:")
+     (prn response)
      (if (sequential? response)
        (extract-essence response)
        response))))
