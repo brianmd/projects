@@ -3,6 +3,7 @@
   (:require [clojure.spec :as s]
 
             [clojure.tools.logging :as log]
+            [mount.core :refer [defstate]]
 
 
 
@@ -13,6 +14,8 @@
 
             [clojure.walk :as walk]
 
+            [datascript.core :as d]
+            [projects.schema :as schema]
 
 
 
@@ -25,7 +28,48 @@
 
             [clojurewerkz.neocons.rest.relationships :as relations]
             [clojurewerkz.neocons.rest.cypher :as cypher]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            ))
+
+;; (def schema
+;;   {:service/service-instance {:db/valueType :db.type/ref
+;;                             :db/doc "definition of a service, including its uri prefix"}
+;;    :service/instance-name {:db/unique :db.unique/identity
+;;                          :db/doc "keyword name used to identity a service instance"}
+;;    :proxy/from-uri {:db/cardinality :db.cardinality/many}
+;;    })
+
+;; (def labelConversions
+;;   ;;  label    to-node
+;;   {[:Release :release :ProjectProxy]      :project
+;;    [:ReleaseLineItem :lineItems :Release] :release
+;;    })
+
+
+(def default-services
+  [
+   {:db/id -1
+    :service/instance-name :blue-harvest.dev
+    :service/service :blue-harvest
+    :service/env :prod
+    :service/uri "http://marketing-02.insummit.com:7442"}
+   {:db/id -2
+    :service/instance-name :blue-harvest.prod
+    :service/service :blue-harvest
+    :service/env :dev
+    :service/uri "http://marketing-22.insummit.com:7442"}
+   {:db/id -3
+    :service/instance-name :project.brian
+    :service/service :projects.10.9.0.124
+    :service/env :brian
+    :service/uri-prefix "http://10.9.0.124:3000"}
+   ])
+
+;; (d/transact! schema/db default-services)
+
+
+
+
 
 ;; helper functions
 
@@ -160,3 +204,20 @@
   [user-repo release-line-item-id]
   (n/delete-node user-repo release-line-item-id "ReleaseLineItem"))
 
+
+(def labelConversions
+  ;;  label    to-node
+  {[:Release :release :ProjectProxy]      :project
+   [:ReleaseLineItem :lineItems :Release] :release
+   })
+;; (labelConversions [:lineItems :Release])
+;; (get labelConversions [:lineItems :Release])
+-
+(defn release->json-api
+  [repo n]
+  (if (and n (map? n))
+    (let [rli-ids (->> n :_meta :relationships :lineItems (map :id))
+          rlis (map #(n/node-plus-relationships repo %) rli-ids)]
+      (j/->json-api n rlis labelConversions)
+      )
+    (throw (ex-info "Not found in release->json-api" {:type :not-found}))))

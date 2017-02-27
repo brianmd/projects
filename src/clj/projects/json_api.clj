@@ -1,8 +1,9 @@
 (ns projects.json-api
-  (:require ; [projects.crud :as crud]
-            [projects.neo4j :as n]
+  (:require [clojure.string :as string]
 
-            [clojure.string :as string]))
+            [projects.neo4j :as n]
+            [projects.schema :as schema]
+            ))
 
 (defn merge-lists [& maps]
   (reduce (fn [m1 m2]
