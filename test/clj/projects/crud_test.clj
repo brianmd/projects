@@ -42,8 +42,15 @@
 ;; {:name "robot", :id "Release-1275449831043", :_meta {:id 1, :labels ["Release"], :type :node, :class :Release}}
 
 (def rid (-> x :id))
+(def rid "Release-100668671362083")
+(project.routes/upsert-release-line-item
+ nil {:attributes {:quantity 77}
+      :relationships
+      {:release {:data {:id rid}}
+       :project-line-item {:data {:id "1234-10"}}}})
 (def y (crud/release-line-item-create repo rid "1234-10" {:qty 7}))
 (def y2 (crud/release-line-item-create repo rid "1234-20" {:qty 4}))
+({:rli {:qty 7, :id "ReleaseLineItem-100679703131981", :_meta {:id 35, :labels ["ReleaseLineItem"], :type :node, :class :ReleaseLineItem}}})
 
 
 

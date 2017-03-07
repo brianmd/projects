@@ -26,8 +26,10 @@
                  [ring/ring-defaults "0.2.2"]
                  [selmer "1.10.6"]
 
+                 [org.clojure/core.async "0.2.385"]
                  [clojurewerkz/neocons "3.1.0"]
                  [datascript "0.15.5"]
+                 [com.murphydye/mishmash "0.1.1-SNAPSHOT"]
                  ]
 
   :min-lein-version "2.0.0"

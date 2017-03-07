@@ -21,8 +21,8 @@
 (defn remove-proxy-suffix
   "remove 'Proxy' suffix"
   [s]
-  (if (string/ends-with? s "Proxy")
-    (subs s 0 (- (count s) 5))
+  (if (string/ends-with? s "-proxy")
+    (subs s 0 (- (count s) 6))
     s))
 
 (defn relate-one
@@ -34,10 +34,15 @@
   [s]
   (str s "s"))
 
+(defn de-camelcase [str] (string/join "-" (map string/lower-case (string/split str #"(?=[A-Z])"))))
+;; (de-camelcase "AbCd")
+
 (defn class-name->str
   [n]
   ;; (-> n :_meta :class name lower-first-char remove-proxy-suffix))
-  (-> n name lower-first-char remove-proxy-suffix))
+  ;; (-> n name lower-first-char remove-proxy-suffix)
+  (-> n name de-camelcase remove-proxy-suffix)
+  )
 
 (defn relate
   [[k ids]]
@@ -67,11 +72,13 @@
         klass (-> relations first :_meta :class)
         type (class-name->str klass)
         one? (= 1 (count relations))
-        lbl (if-let [l (get conversions [from-klass label klass])] l label)
+        ;; lbl (if-let [l (get conversions [from-klass label klass])] l label)
+        grp-lbl (schema/find-group-label from-klass label klass)
+        card (schema/find-cardinality from-klass label klass)
         ]
-    {lbl
+    {grp-lbl
      {:data
-            (if one?
+            (if (= :db.cardinality/one card)
               {:type type :id (:id (first relations))}
               (map (fn [r] {:type type :id (:id r)}) relations))}})
   )

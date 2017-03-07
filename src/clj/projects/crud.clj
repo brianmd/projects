@@ -2,7 +2,8 @@
   ;; (:refer-clojure :exclude [find])
   (:require [clojure.spec :as s]
 
-            [clojure.tools.logging :as log]
+            ;; [clojure.tools.logging :as log]
+            [mishmash.log :as log]
             [mount.core :refer [defstate]]
 
 
@@ -156,7 +157,7 @@
 (defn release-create
   "create new release against project"
   [user-repo sap-project-id requestor-id m]
-  (let [query "merge (project:ProjectProxy:SAPProxy {id: {projectId}}) MERGE (requestor:Customer {id: {requestorId}}) create (project)-[l:release]->(n:Release {data})-[r:requestor]->(requestor) return n"
+  (let [query "merge (project:ProjectProxy:SAPProxy {id: {projectId}}) MERGE (requestor:Customer {id: {requestorId}}) create (project)-[l:release]->(n:Release {data})<-[r:requestor]-(requestor) return n"
         id (make-id :Release)
         data {:projectId (->int sap-project-id) :requestorId (->int requestor-id) :data (assoc m :id id)}]
     (n/process-query-n user-repo query data)))
@@ -177,17 +178,34 @@
 ;;   {:pre [(s/valid? ::user-repo user-repo)]}
 ;;   )
 
+;; (log/info ::test {:error? 3})
+;; (log/log 3 (range 15))
+;; (log/logp 3 (range 45))
+
 (defn release-delete
   [user-repo release-id]
-  (let [query "match (n:Release {id: {id}})-[]->(li:ReleaseLineItem) detach delete n,li"
+  (let [query "match (n:Release {id: {id}}) optional match (n)-[]->(li:ReleaseLineItem) detach delete n,li"
         data {"id" release-id}]
     (n/process-query user-repo query data)))
 
 (defn release-line-item-create
   [user-repo release-id project-line-item-id m]
-  (let [query "match (r:Release {id: {id}}) create unique (r)-[l:lineItem]->(rli:ReleaseLineItem {data})-[l2:projectLineItem]->(:ProjectLineItemProxy:SAPProxy {pliData}) return rli"
-        data {"id" release-id "data" (assoc m :id (make-id "ReleaseLineItem")) "pliData" {:type "projectlineitem" :id project-line-item-id}}]
-    (n/process-query user-repo query data)))
+  (println "creating line item")
+  (let [query (str "match (r:Release {id: {id}})
+merge (pli:ProjectLineItemProxy:SAPProxy {id: \"" project-line-item-id "\"})
+create unique (r)-[l:lineItem]->(n:ReleaseLineItem {data})-[:projectLineItem]->(pli) return n")
+        data {"id" release-id "data" (assoc m :id (make-id "ReleaseLineItem"))
+              ;; "pliData" {:type "projectlineitem" :id project-line-item-id}
+              }]
+    (println "before" data)
+    (prn query)
+    (let [x
+          (n/process-query-n user-repo query data)
+          ]
+      (println "finished ")
+      (println "x:" x)
+      x)
+    ))
 
 
 (defn release-line-item
@@ -216,8 +234,10 @@
 (defn release->json-api
   [repo n]
   (if (and n (map? n))
-    (let [rli-ids (->> n :_meta :relationships :lineItems (map :id))
+    (let [rli-ids (->> n :_meta :relationships :lineItem (map :id))
           rlis (map #(n/node-plus-relationships repo %) rli-ids)]
+      (println "\n\nrlis" rlis "\n\n" rli-ids "\n\n")
+      (clojure.pprint/pprint n)
       (j/->json-api n rlis labelConversions)
       )
-    (throw (ex-info "Not found in release->json-api" {:type :not-found}))))
+    (throw (ex-info (str "Requested release not found") {:type :not-found}))))

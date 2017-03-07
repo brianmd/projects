@@ -13,6 +13,17 @@
   [req]
   {:repo repo})
 
+(defn json-204
+  []
+  {:body ""
+   :status 204
+   }
+
+
+      ;; (response/header "Content-Type" "application/json; charset=utf-8")
+      ;; (response/header "Access-Control-Allow-Origin" "*")
+  )
+
 (defn ok-json
   [json-data]
   (-> (response/ok json-data)
@@ -48,14 +59,19 @@
         project-line-item-id (-> data :relationships :project-line-item :data :id)
         id (:id data)
         ]
-    (prn [id release-id project-line-item-id attrs])
+    (prn ["upsert-release-line-item" id release-id project-line-item-id attrs])
     (if id
-      (let [n (crud/release-line-item-update repo id attrs)]
+      (let [n (crud/release-line-item-update repo id attrs)
+            ;; rli (crud/release-line-item repo (-> n first :id))
+            ]
         (clojure.pprint/pprint n)
+        ;; (ok-json {:data (j/node->json-api n)})
         (ok-json {:data (j/node->json-api n)})
         )
       (let [n (crud/release-line-item-create repo release-id project-line-item-id attrs)]
+        (println "\n\ncreated release line item!!!!\n")
         (clojure.pprint/pprint n)
+        ;; (clojure.pprint/pprint rli)
         (ok-json {:data (j/node->json-api n)})
         )
       )))
@@ -94,7 +110,8 @@
            (println "\n\nin delete release\n")
            (prn id)
            ;; (let [id (:id data)]
-             (crud/release-delete id)
+             (crud/release-delete repo id)
+             (json-204)
              ;; )
            )
 
@@ -112,7 +129,24 @@
            (println "\n\nin delete release-line-items\n")
            ;; (prn data)
            ;; (let [id (:id data)]
-             (crud/release-line-item-delete id)
-             ;; )
+             (crud/release-line-item-delete repo id)
+             (json-204)
          )
    ))
+
+
+;; (let [inc-xf (comp (map inc)
+;;                    (filter even?))
+;;       rf (inc-xf conj)]
+;;   (rf (reduce rf (rf) [1 2 3 4])))
+;; (let [inc-xf (comp (map inc)
+;;                    (filter even?))
+;;       rf (inc-xf conj)]
+;;   (reduce rf (rf) [1 2 3 4]))
+;; (let [rf ((comp (map inc)
+;;                 (filter even?))
+;;           conj)]
+;;   (reduce rf (rf) [1 2 3 4]))
+
+;; (reduce (comp conj inc) [] (range 3))
+;; (reduce + (range 3))

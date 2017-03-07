@@ -62,17 +62,19 @@
     (if lbl
       lbl
       (d/q relationship-query
-           @db :ProjectProxy inverse-attr :Release)
+           @db to-class inverse-attr from-class)
       )))
 
 (defn find-label
-  [from-class to-class]
+  [from-class label to-class]
   (find-relationship-value from-class :relate/to-label :relate/from-label to-class))
 (defn find-group-label
-  [from-class to-class]
+  [from-class label to-class]
+  (prn [from-class to-class])
   (find-relationship-value from-class :relate/to-group-label :relate/from-group-label to-class))
+
 (defn find-cardinality
-  [from-class to-class]
+  [from-class label to-class]
   (find-relationship-value from-class :relate/to-type :relate/from-type to-class))
 
 
@@ -83,13 +85,14 @@
 (def relationships
   [[:relate/from :relate/from-label :relate/from-type :relate/to-type :relate/to-label :relate/to]
    [:AccountProxy :account :db.cardinality/one :db.cardinality/many [:project :projects] :ProjectProxy]
+   [:Customer :requestor :db.cardinality/one :db.cardinality/many [:release :releases] :Release]
    [:ProjectProxy :project :db.cardinality/one :db.cardinality/many [:release :releases] :Release]
-   [:Release :release :db.cardinality/one :db.cardinality/many [:lineItem :lineItems] :ReleaseLineItem]
+   [:Release :release :db.cardinality/one :db.cardinality/many [:line-item :line-items] :ReleaseLineItem]
    [:ReleaseLineItem :release-line-item :db.cardinality/one :db.cardinality/one :project-line-item :ProjectLineItemProxy]
    ])
 
 (defstate
-  ^{:on-reload :noop}
+  ;; ^{:on-reload :noop}
   db
   :start (let [db (d/create-conn schema)]
            (d/transact! db (#'build-maps relationships))
@@ -113,11 +116,15 @@
 
 
 (comment
-  (find-label :ProjectProxy :Release)
-  (find-label :Release :ProjectProxy)
-  (find-group-label :ProjectProxy :Release)
-  (find-group-label :Release :ProjectProxy)
-  (find-cardinality :ProjectProxy :Release)
-  (find-cardinality :Release :ProjectProxy)
+  (find-label :ProjectProxy nil :Release)
+  (find-label :Release nil :ProjectProxy)
+
+  (find-group-label :ProjectProxy nil :Release)
+  (find-group-label :Release nil :ProjectProxy)
+  (find-group-label :Release nil :ReleaseLineItem)
+  (find-group-label :ReleaseLineItem nil :Release)
+
+  (find-cardinality :ProjectProxy nil :Release)
+  (find-cardinality :Release nil :ProjectProxy)
   )
 

@@ -120,8 +120,6 @@
   ([user-repo query] (process-query user-repo query {}))
   ([repo query data]
    (let [response (process-plain-query repo query data)]
-     (println "\n\nresponse:")
-     (prn response)
      (if (sequential? response)
        (extract-essence response)
        response))))
