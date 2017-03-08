@@ -15,7 +15,7 @@
 
 (defn json-204
   []
-  {:body {:ok true}
+  {:body {}
    :headers {"Content-Type" "application/json; charset=utf-8"}
    :status 204
    }
