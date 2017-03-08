@@ -29,7 +29,7 @@
                  [org.clojure/core.async "0.2.385"]
                  [clojurewerkz/neocons "3.1.0"]
                  [datascript "0.15.5"]
-                 [com.murphydye/mishmash "0.1.1-SNAPSHOT"]
+                 [com.murphydye/mishmash "0.1.2-SNAPSHOT"]
                  ]
 
   :min-lein-version "2.0.0"
