@@ -15,7 +15,8 @@
 
 (defn json-204
   []
-  {:body ""
+  {:body {:ok true}
+   :headers {"Content-Type" "application/json; charset=utf-8"}
    :status 204
    }
 
@@ -53,6 +54,7 @@
 
 (defn upsert-release-line-item
   [request data]
+  (println "in upsert-release-line-item")
   (prn data)
   (let [attrs (:attributes data)
         release-id (-> data :relationships :release :data :id)
@@ -97,8 +99,9 @@
               ]
           (ok-json json-data)))
    (POST "/releases" [data :as request]
-         (println "\n\nin post releases\n")
+         (println "\n\nin post releases\nHere is the incoming data")
          (prn data)
+         (prn request)
          (upsert-release request data)
          )
    (PATCH "/releases/:id" [id data :as request]
@@ -111,12 +114,13 @@
            (prn id)
            ;; (let [id (:id data)]
              (crud/release-delete repo id)
+             (crud/release-delete nil "Release-352236386207955")
              (json-204)
              ;; )
            )
 
    (POST "/release-line-items" [data :as request]
-         (println "\n\nin post release-line-items\n")
+         (println "\n\nin POST release-line-items\nHere is the incoming data:")
          (prn data)
          (upsert-release-line-item request data)
          )

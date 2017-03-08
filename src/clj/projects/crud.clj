@@ -196,6 +196,8 @@
 (defn release-line-item-create
   [user-repo release-id project-line-item-id m]
   (println "creating line item for release " release-id)
+  (when (nil? release-id)
+    (throw (Exception. (str "release-id not found: " release-id))))
   (let [query (str "match (r:Release {id: {id}})
 merge (pli:ProjectLineItemProxy:SAPProxy {id: \"" project-line-item-id "\"})
 create unique (r)-[l:lineItem]->(n:ReleaseLineItem {data})-[:projectLineItem]->(pli) return n")
