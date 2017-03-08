@@ -151,12 +151,14 @@
 (defn releases
   "get all releases (id, name) for specified project"
   [user-repo project-id]
+  (println "get releases for project " project-id)
   (map (comp first vals)
        (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return n" {"id" project-id})))
 
 (defn release-create
   "create new release against project"
   [user-repo sap-project-id requestor-id m]
+  (println "create release for project " sap-project-id)
   (let [query "merge (project:ProjectProxy:SAPProxy {id: {projectId}}) MERGE (requestor:Customer {id: {requestorId}}) create (project)-[l:release]->(n:Release {data})<-[r:requestor]-(requestor) return n"
         id (make-id :Release)
         data {:projectId (->int sap-project-id) :requestorId (->int requestor-id) :data (assoc m :id id)}]
@@ -164,10 +166,12 @@
 
 (defn release
   [user-repo id]
+  (println "get release id " id)
   (n/node-plus-relationships user-repo id "Release"))
 
 (defn release-update
   [user-repo release-id m]
+  (println "update release id " release-id)
   (let [query "match (n:Release {id: {id}}) set n += {data} return n"
         data (dissoc m :id)]
     (n/process-query-n user-repo query {:id release-id :data data}))
@@ -184,13 +188,14 @@
 
 (defn release-delete
   [user-repo release-id]
+  (println "delete release id " release-id)
   (let [query "match (n:Release {id: {id}}) optional match (n)-[]->(li:ReleaseLineItem) detach delete n,li"
         data {"id" release-id}]
     (n/process-query user-repo query data)))
 
 (defn release-line-item-create
   [user-repo release-id project-line-item-id m]
-  (println "creating line item")
+  (println "creating line item for release " release-id)
   (let [query (str "match (r:Release {id: {id}})
 merge (pli:ProjectLineItemProxy:SAPProxy {id: \"" project-line-item-id "\"})
 create unique (r)-[l:lineItem]->(n:ReleaseLineItem {data})-[:projectLineItem]->(pli) return n")
@@ -210,16 +215,19 @@ create unique (r)-[l:lineItem]->(n:ReleaseLineItem {data})-[:projectLineItem]->(
 
 (defn release-line-item
   [user-repo id]
+  (println "getting release line item " id)
   (n/node-plus-relationships user-repo id "ReleaseLineItem"))
 
 (defn release-line-item-update
   [user-repo release-line-item-id m]
+  (println "updating release line item " release-line-item-id)
   (let [query "match (n:ReleaseLineItem {id: {id}}) set n += {data} return n"
         data (dissoc m :id)]
     (n/process-query-n user-repo query {:id release-line-item-id :data data})))
 
 (defn release-line-item-delete
   [user-repo release-line-item-id]
+  (println "deleting release line item " release-line-item-id)
   (n/delete-node user-repo release-line-item-id "ReleaseLineItem"))
 
 
