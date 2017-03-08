@@ -114,7 +114,6 @@
            (prn id)
            ;; (let [id (:id data)]
              (crud/release-delete repo id)
-             (crud/release-delete nil "Release-352236386207955")
              (json-204)
              ;; )
            )
