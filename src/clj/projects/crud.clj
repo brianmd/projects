@@ -152,8 +152,12 @@
   "get all releases (id, name) for specified project"
   [user-repo project-id]
   (println "get releases for project " project-id)
-  (map (comp first vals)
-       (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return n" {"id" project-id})))
+  (let [data (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return n" {"id" project-id})
+        data (map (comp first vals) data)
+        data (map (fn [n] {:type "release" :id (:id n) :attributes (dissoc n :_meta :id)}) data)
+        ]
+    data
+    ))
 
 (defn release-create
   "create new release against project"
