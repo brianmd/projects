@@ -62,6 +62,7 @@
         id (:id data)
         ]
     (prn ["upsert-release-line-item" id release-id project-line-item-id attrs])
+    (prn request)
     (if id
       (let [n (crud/release-line-item-update repo id attrs)
             ;; rli (crud/release-line-item repo (-> n first :id))
@@ -90,8 +91,11 @@
           (println "\n\nasdf \n")
           (ok-json {:data data})))
    (GET "/projects/:id/releases" [id]
-        (let [data (map j/node->json-api (crud/releases (make-repo nil) (read-string id)))]
-          (ok-json data)))
+        (let [_ (println "project-id" id)
+              data (crud/releases (make-repo nil) (read-string id))
+              _ (prn data)
+              json-api-data (map j/node->json-api data)]
+          (ok-json {:data data})))
    (GET "/releases/:id" [id]
         (let [id (read-string id)
               node (#'crud/release (make-repo nil) id)

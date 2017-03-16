@@ -36,6 +36,8 @@
 (def repo nil)
 (n/delete-all! repo)
 (def x (crud/release-create repo 3 28 {:name "robot"}))
+(crud/releases repo 3)
+
 (def x2 (crud/release-create repo 3 28 {:name "drawing #123"}))
 ;; (def x3 (crud/release-create repo 3 28 {:name "drawing #456"}))
 ;; (def x4 (crud/release-create repo 3 28 {:name "drawing #789"}))
@@ -57,6 +59,12 @@
 {:attrs (:attributes create-request)
  :project-id (-> create-request :relationships :release :data :id)
  :requestor-id (-> create-request :relationships :requestor :data :id)}
+
+(http/get
+ "http://10.9.0.124:3005/api/v2/projects/3/releases"
+ {:content-type :json
+  :accept :json
+  })
 
 (http/get
  "http://10.9.0.124:3000/api/v2/releases/Release-58077327383647"
