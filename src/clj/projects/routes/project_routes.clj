@@ -85,20 +85,33 @@
   (routes
    (GET "/ok" []
         (ok-json {:ok true}))
-   (GET "/releases" []
-        (let [id "3"
-              data (map j/node->json-api (crud/releases (make-repo nil) (read-string id)))]
-          (println "\n\nasdf \n")
-          (ok-json {:data data})))
+   ;; (GET "/releases" []
+   ;;      (let [id "3"
+   ;;            ;; data (map j/node->json-api (crud/releases (make-repo nil) (read-string id)))]
+   ;;            repo (make-repo nil)
+   ;;            releases (crud/releases repo (read-string id))
+   ;;            data (map #(crud/release->json-api repo %) releases)
+   ;;            ]
+   ;;        (println "\n\nasdfs \n")
+   ;;        (ok-json {:data data})))
    (GET "/projects/:id/releases" [id]
         (let [_ (println "project-id" id)
-              data (crud/releases (make-repo nil) (read-string id))
-              _ (prn data)
-              json-api-data (map j/node->json-api data)]
-          (ok-json {:data data})))
+              repo (make-repo nil)
+              releases (crud/releases repo (read-string id))
+              _ (prn releases)
+              json-api-data (map #(crud/release->json-api repo %) releases)
+              data (map :data json-api-data)
+              included (map :included json-api-data)
+              ;; data json-api-data
+              ;; json-api-data (map j/node->json-api releases)
+              ]
+          (ok-json {:data data :included (flatten included)})))
+          ;; (ok-json {:data json-api-data})))
+          ;; (ok-json {:data releases})))
    (GET "/releases/:id" [id]
         (let [id (read-string id)
-              node (#'crud/release (make-repo nil) id)
+              repo (make-repo nil)
+              node (#'crud/release repo id)
               json-data (#'crud/release->json-api repo node)
               ]
           (ok-json json-data)))

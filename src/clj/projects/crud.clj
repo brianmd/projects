@@ -148,8 +148,8 @@
 
 ;; release functions
 
-(defn releases
-  "get all releases (id, name) for specified project"
+(defn releases-light
+  "get all releases (id, name) for specified project sans relationships"
   [user-repo project-id]
   (println "get releases for project " project-id)
   (let [data (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return n" {"id" project-id})
@@ -158,6 +158,35 @@
         ]
     data
     ))
+;; (releases-light nil 3)
+
+
+(declare release)
+
+(defn releases
+  "get all releases (id, name) for specified project"
+  [user-repo project-id]
+  (println "get releases for project " project-id)
+  (let [data (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[]->(n:Release) return n" {"id" project-id})
+        data (map (comp first vals) data)
+        ;; data (map (fn [n] {:type "release" :id (:id n) :attributes (dissoc n :_meta :id)}) data)
+        release-ids (map :id data)
+        ]
+    (map #(release user-repo %) release-ids)
+    ))
+;; (releases nil 3)
+
+;; (defn releases
+;;   "get all releases (id, name) for specified project"
+;;   [user-repo project-id]
+;;   (println "get releases for project " project-id)
+;;   (let [data (n/process-query user-repo "match (p:ProjectProxy {id: {id}})-[release]->(n:Release)<-[requestor]-(a:Customer) return n,a" {"id" project-id})
+;;         ;; data (map (comp first vals) data)
+;;         ;; data (map (fn [n] {:type "release" :id (:id n) :attributes (dissoc n :_meta :id)}) data)
+;;         ]
+;;     data
+;;     ))
+;; (releases nil 3)
 
 (defn release-create
   "create new release against project"
